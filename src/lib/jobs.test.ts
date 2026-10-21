@@ -1,13 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { sortByNewest, formatPostedDate } from './jobs';
+import { sortByNewest, formatPostedDate, filterJobs } from './jobs';
 import type { Job } from '../types/job';
 
-function makeJob(slug: string, postedDate: string): Job {
+function makeJob(
+    slug: string,
+    postedDate: string,
+    department = 'Technology',
+    location = 'Remote',
+): Job {
     return {
         slug,
         title: `Role ${slug}`,
-        department: 'Technology',
-        location: 'Remote',
+        department,
+        location,
         type: 'Full-time',
         remote: true,
         postedDate,
@@ -30,6 +35,44 @@ describe('sortByNewest', () => {
         const original = jobs.map((j) => j.slug);
         sortByNewest(jobs);
         expect(jobs.map((j) => j.slug)).toEqual(original);
+    });
+});
+
+describe('filterJobs', () => {
+    const jobs = [
+        makeJob('technology-remote', '2027-01-01', 'Technology', 'Remote'),
+        makeJob('technology-office', '2027-01-02', 'Technology', 'Boston, MA, USA'),
+        makeJob('finance-remote', '2027-01-03', 'Finance', 'Remote'),
+    ];
+
+    it('filters by department', () => {
+        expect(filterJobs(jobs, 'Technology', '').map((job) => job.slug)).toEqual([
+            'technology-remote',
+            'technology-office',
+        ]);
+    });
+
+    it('filters by location', () => {
+        expect(filterJobs(jobs, '', 'Remote').map((job) => job.slug)).toEqual([
+            'technology-remote',
+            'finance-remote',
+        ]);
+    });
+
+    it('combines department and location filters with AND', () => {
+        expect(filterJobs(jobs, 'Technology', 'Remote').map((job) => job.slug)).toEqual([
+            'technology-remote',
+        ]);
+        expect(filterJobs(jobs, 'Finance', 'Boston, MA, USA')).toEqual([]);
+    });
+
+    it('returns all roles when filters are cleared', () => {
+        expect(filterJobs(jobs, '', '').map((job) => job.slug)).toEqual([
+            'technology-remote',
+            'technology-office',
+            'finance-remote',
+        ]);
+        expect(filterJobs([], '', '')).toEqual([]);
     });
 });
 

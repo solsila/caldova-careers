@@ -19,6 +19,55 @@ test.describe('Open roles listing', () => {
         await expect(grid.getByTestId('role-location')).toHaveCount(expectedRoleCount);
     });
 
+    test('filters roles by department and location together and resets them', async ({ page }) => {
+        await page.goto('/');
+
+        await page.getByTestId('department-filter').selectOption({ label: 'Technology' });
+        await page.getByTestId('location-filter').selectOption({
+            label: 'Remote (US & Canada)',
+        });
+
+        const visibleCards = page.locator('[data-testid="role-card"]:visible');
+        await expect(visibleCards).toHaveCount(2);
+        await expect(page.getByTestId('role-results-count')).toHaveText(
+            `Showing 2 of ${expectedRoleCount} roles.`,
+        );
+
+        await page.getByTestId('filters-reset').click();
+        await expect(visibleCards).toHaveCount(expectedRoleCount);
+        await expect(page.getByTestId('department-filter')).toHaveValue('');
+        await expect(page.getByTestId('location-filter')).toHaveValue('');
+    });
+
+    test('filters by either field and displays an empty result state', async ({ page }) => {
+        await page.goto('/');
+
+        await page.getByTestId('department-filter').selectOption({ label: 'Finance' });
+        await expect(page.locator('[data-testid="role-card"]:visible')).toHaveCount(2);
+
+        await page.getByTestId('department-filter').selectOption('');
+        await page.getByTestId('location-filter').selectOption({
+            label: 'Amsterdam, Netherlands',
+        });
+        await expect(page.locator('[data-testid="role-card"]:visible')).toHaveCount(1);
+
+        await page.getByTestId('department-filter').selectOption({ label: 'Security' });
+        await page.getByTestId('location-filter').selectOption({
+            label: 'London, United Kingdom',
+        });
+        await expect(page.getByTestId('roles-grid')).toBeHidden();
+        await expect(page.getByTestId('filter-empty-state')).toBeVisible();
+        await expect(page.getByTestId('empty-state-text')).toHaveText(
+            'No roles match these filters. Try different selections or reset the filters.',
+        );
+
+        await page.getByTestId('filters-reset').click();
+        await expect(page.getByTestId('filter-empty-state')).toBeHidden();
+        await expect(page.locator('[data-testid="role-card"]:visible')).toHaveCount(
+            expectedRoleCount,
+        );
+    });
+
     test('links through to a role detail page', async ({ page }) => {
         await page.goto('/');
         const firstCard = page.getByTestId('role-card').first();
